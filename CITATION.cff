@@ -1,0 +1,43 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite our original paper in J. Phys. D: Appl. Phys."
+title: "DIPE Visualizer (Displacement-Induced Phase Error)"
+type: software
+authors:
+  - family-names: Ling
+    given-names: Tong
+    affiliation: Nanyang Technological University
+  - family-names: Li
+    given-names: Huakun
+    affiliation: Nanyang Technological University
+keywords:
+  - optical coherence tomography
+  - reflection-mode interferometry
+  - displacement-induced phase error
+  - visualization
+license: MIT
+preferred-citation:
+  type: article
+  title: "Phase-restoring subpixel image registration: enhancing motion detection performance in Fourier-domain optical coherence tomography"
+  authors:
+    - family-names: Li
+      given-names: Huakun
+    - family-names: Tan
+      given-names: Bingyao
+    - family-names: Pandiyan
+      given-names: Vimal Prabhu
+    - family-names: Barathi
+      given-names: Veluchamy Amutha
+    - family-names: Sabesan
+      given-names: Ramkumar
+    - family-names: Schmetterer
+      given-names: Leopold
+    - family-names: Ling
+      given-names: Tong
+  doi: 10.1088/1361-6463/adb3b4
+  url: "https://doi.org/10.1088/1361-6463/adb3b4"
+  year: 2025
+  journal: "Journal of Physics D: Applied Physics"
+  volume: 58
+  issue: 14
+  pages: 145102
+  publisher: "IOP Publishing"

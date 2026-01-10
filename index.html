@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DIPE Visualizer (Displacement‑Induced Phase Error)</title>
+  <style>
+    :root{
+      --bg:#0b0d10;
+      --panel:#11161c;
+      --panel2:#0e1217;
+      --text:#e9eef6;
+      --muted:#aab6c5;
+      --grid:#243042;
+      --axis:#5c6b80;
+      --psf:#58a6ff;
+      --accent:#58a6ff; /* measured phase */
+      --ref:#2dd4bf;
+      --tar:#f97316;
+      --err:#facc15;
+      --ideal:#94a3b8;
+      --border:#1f2a38;
+      --ok:#22c55e;     /* amplitude curve */
+      --uniform:#ec4899; /* reference (pink) */
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      background: radial-gradient(1200px 700px at 70% -10%, #182133 0%, var(--bg) 55%);
+      color:var(--text);
+    }
+    header{
+      padding:18px 16px 10px;
+      max-width:1100px;
+      margin:0 auto;
+    }
+    h1{
+      font-size:18px;
+      margin:0 0 6px;
+      letter-spacing:0.2px;
+    }
+    .subtitle{
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.35;
+      margin:0;
+    }
+    .wrap{
+      max-width:1100px;
+      margin:0 auto;
+      padding:10px 16px 20px;
+    }
+
+    .controls{
+      background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px 12px 10px;
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:10px 14px;
+      align-items:end;
+    }
+    @media (max-width: 920px){
+      .controls{ grid-template-columns: 1fr; }
+    }
+    .ctrl{
+      display:grid;
+      grid-template-columns: 170px 1fr 150px;
+      gap:10px;
+      align-items:center;
+    }
+    .ctrl.twoCol{
+      grid-template-columns: 170px 1fr;
+    }
+
+    .ctrl label{
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    .ctrl input[type="range"]{
+      width:100%;
+      accent-color:var(--psf);
+    }
+    select, button{
+      background:#0b1118;
+      color:var(--text);
+      border:1px solid var(--border);
+      border-radius:10px;
+      padding:8px 10px;
+      outline:none;
+      font-size:12px;
+    }
+    button{ cursor:pointer; }
+    button:hover{ border-color:#2d3a4d; }
+
+    .pill{
+      font-variant-numeric: tabular-nums;
+      justify-self:end;
+      background:#0b1118;
+      border:1px solid var(--border);
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:12px;
+      color:var(--text);
+      text-align:right;
+      max-width:100%;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .checkboxRow{
+      grid-column: 1 / -1;
+      display:flex;
+      flex-wrap:wrap;
+      gap:12px 14px;
+      align-items:center;
+      padding:2px 2px 0;
+    }
+    .checkboxRow label{
+      display:flex; gap:8px; align-items:center;
+      color:var(--muted);
+      font-size:12px;
+      white-space:nowrap;
+    }
+
+    .readouts{
+      grid-column: 1 / -1;
+      display:grid;
+      grid-template-columns: 170px 1fr 220px;
+      gap:10px;
+      align-items:start;
+      margin-top:2px;
+    }
+    .readouts label{
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+      align-self:center;
+    }
+    .readoutPills{
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+      margin-top:12px;
+    }
+    @media (max-width: 920px){
+      .grid{ grid-template-columns: 1fr; }
+    }
+    .panel{
+      background:linear-gradient(180deg, var(--panel) 0%, var(--panel2) 100%);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:10px;
+      position:relative;
+      overflow:hidden;
+    }
+    .panel h2{
+      margin:0 0 8px;
+      font-size:13px;
+      color:var(--muted);
+      letter-spacing:0.2px;
+      font-weight:600;
+    }
+
+    .bottom{ grid-column: 1 / -1; }
+
+    canvas{
+      width:100%;
+      height:260px;
+      display:block;
+      border-radius:10px;
+      background:#070a0d;
+      border:1px solid #0b1220;
+    }
+    #ampCanvas{ height: 190px; margin-top:10px; }
+
+    .dzRow{
+      background:rgba(11,17,24,0.55);
+      border:1px solid rgba(31,42,56,0.9);
+      border-radius:12px;
+      padding:10px 10px 8px;
+      margin:0 0 10px;
+    }
+    .dzTop{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      margin-bottom:6px;
+      min-width:0;
+    }
+    .dzTop label{
+      font-size:12px;
+      color:var(--muted);
+      white-space:nowrap;
+    }
+    #dz{
+      width:100%;
+      height:28px; /* easier thumb */
+      accent-color:var(--psf);
+    }
+    .hint{
+      color:#7f8aa0;
+      font-size:11.5px;
+      line-height:1.25;
+      margin-top:6px;
+    }
+
+    .legend{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px 14px;
+      margin-top:8px;
+      color:var(--muted);
+      font-size:12px;
+    }
+    .key{ display:flex; gap:8px; align-items:center; }
+    .sw{ width:14px; height:3px; border-radius:2px; background:var(--muted); }
+    .sw.ref{ background:var(--ref); height:4px; }
+    .sw.tar{ background:var(--tar); height:4px; }
+    .sw.err{ background:var(--err); }
+    .sw.ideal{ background:var(--ideal); }
+    .sw.meas{ background:var(--accent); height:4px; }
+    .sw.amp{ background:var(--ok); height:4px; }
+    .sw.uniform{ background:var(--uniform); height:4px; }
+
+    .note{
+      margin-top:12px;
+      background:linear-gradient(180deg, #0f141b 0%, #0b0f15 100%);
+      border:1px solid var(--border);
+      border-radius:12px;
+      padding:12px 12px 10px;
+      color:var(--muted);
+      font-size:12.5px;
+      line-height:1.45;
+    }
+    .note b{ color:var(--text); }
+    .note code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size:12px;
+      color:#d6e1ff;
+    }
+    .footer{
+      margin-top:10px;
+      color:#7f8aa0;
+      font-size:11.5px;
+    }
+    .footer a{
+      color: var(--psf);
+      text-decoration: none;
+    }
+    .footer a:hover{
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>DIPE visualizer for reflection‑mode interferometric imaging (1D toy model)</h1>
+    <p class="subtitle">
+      One axial pixel at <b>z = 0</b> is a <b>coherent sum</b> of many nearby scatterers weighted by the axial PSF.
+      When the sample translates by Δz, each scatterer’s geometric phase shifts by <code>2k₀Δz</code>, <i>but</i> its PSF weight changes too —
+      and that reweighting shifts the phase of the coherent sum.
+      <br /><br />
+      The DIPE concept was proposed in the PRESIR paper for FD‑OCT, but the mechanism applies broadly to reflection‑mode interferometric imaging.
+      <br /><br />
+      <b>Simulation conditions:</b> center wavelength <code>λ₀ = 0.85 µm</code> (so <code>k₀ = 2π/λ₀</code>), scatterers uniform in <code>z ∈ [−50, 50] µm</code>, and displacement sweep <code>Δz ∈ [−15, 15] µm</code>.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <div class="controls">
+      <div class="ctrl">
+        <label for="sigma">PSF width σ<sub>z</sub> (Gaussian)</label>
+        <input id="sigma" type="range" min="0.5" max="5" step="0.1" value="1.0" />
+        <div class="pill" id="sigmaReadout">1.0 µm</div>
+      </div>
+
+      <div class="ctrl twoCol">
+        <label for="ns">Number of scatterers N<sub>s</sub></label>
+        <select id="ns">
+          <option value="1">1 (single reflector)</option>
+          <option value="5">5</option>
+          <option value="20">20</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="1000">1000</option>
+          <option value="10000">10000</option>
+        </select>
+      </div>
+
+      <div class="ctrl">
+        <label>Scatterers</label>
+        <button id="randBtn">New random scatterers</button>
+        <div class="pill" id="seedReadout">Speckle #1</div>
+      </div>
+
+      <div class="ctrl twoCol">
+        <label>Phasor plot scaling</label>
+        <div style="color:var(--muted); font-size:12px; line-height:1.25;">
+          E<sub>tar</sub> is normalized by max |E<sub>tar</sub>(Δz)| over ±15 µm
+        </div>
+      </div>
+
+      <div class="checkboxRow">
+        <label><input id="showPhasors" type="checkbox" checked /> Show individual scatterer phasors</label>
+        <label><input id="showWeightBars" type="checkbox" checked /> Show PSF‑weighted amplitudes in depth view</label>
+        <label><input id="showIdealRef" type="checkbox" checked /> Show ideal rigid‑body reference in phasor view</label>
+      </div>
+
+      <div class="readouts">
+        <label>Readouts (wrapped to ±π)</label>
+        <div class="readoutPills">
+          <span class="pill" style="border-color:#203048;">
+            Δφ<sub>ideal</sub> = <span id="phiIdeal">0.000</span> rad
+            (<span id="phiIdealDeg">0.0</span>°)
+          </span>
+          <span class="pill" style="border-color:#203048;">
+            Δφ<sub>measured</sub> = <span id="phiMeas">0.000</span> rad
+            (<span id="phiMeasDeg">0.0</span>°)
+          </span>
+          <span class="pill" style="border-color:#203048;">
+            φ<sub>error</sub> = <span id="phiErr">0.000</span> rad
+            (<span id="phiErrDeg">0.0</span>°)
+          </span>
+        </div>
+        <div class="pill" id="magReadout">|E_tar|: 0.00 • |E_tar|/max: 0.00</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>1) Scatterers moving through a fixed axial PSF (z in µm, pixel at 0)</h2>
+        <canvas id="depthCanvas"></canvas>
+        <div class="legend">
+          <div class="key"><span class="sw" style="background:var(--psf)"></span> PSF envelope</div>
+          <div class="key"><span class="sw" style="background:#a78bfa"></span> Scatterers (shifted by Δz)</div>
+          <div class="key"><span class="sw" style="background:#34d399"></span> PSF‑weighted amplitude A·PSF(z) (display‑normalized)</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h2>2) Phasor view: coherent sum at one pixel (complex plane)</h2>
+        <canvas id="phasorCanvas"></canvas>
+        <div class="legend">
+          <!-- FIX #3: correct class so the swatch is orange -->
+          <div class="key"><span class="sw tar"></span> E<sub>tar</sub>(Δz) (normalized)</div>
+          <div class="key" id="idealLegend"><span class="sw uniform"></span> Ideal rigid‑body reference (no reweighting)</div>
+          <div class="key"><span class="sw" style="background:#8b95a7"></span> Individual phasors (subset for large N)</div>
+        </div>
+      </div>
+
+      <div class="panel bottom">
+        <h2>3) Phase & amplitude vs displacement at this pixel</h2>
+
+        <!-- Δz slider moved here for easier multi-plot viewing -->
+        <div class="dzRow">
+          <div class="dzTop">
+            <label for="dz">Bulk axial displacement Δz</label>
+            <div class="pill" id="dzReadout">0.000 µm</div>
+          </div>
+          <input id="dz" type="range" min="-15" max="15" step="0.001" value="0" />
+          <div class="hint">
+            Tip: use ←/→ (or ↑/↓) to nudge Δz by 0.001 µm; Shift+arrow = 0.01 µm. Phase is wrapped, so jumps near ±π are expected.
+          </div>
+        </div>
+
+        <canvas id="phaseCanvas"></canvas>
+        <canvas id="ampCanvas"></canvas>
+
+        <div class="legend">
+          <div class="key"><span class="sw ideal"></span> Δφ<sub>ideal</sub>(Δz) = wrap(2k₀Δz)</div>
+          <div class="key"><span class="sw meas"></span> Δφ<sub>measured</sub>(Δz) = arg(E<sub>tar</sub>·E<sub>ref</sub><sup>*</sup>)</div>
+          <div class="key"><span class="sw err"></span> φ<sub>error</sub>(Δz) = wrap(Δφ<sub>measured</sub> − Δφ<sub>ideal</sub>)</div>
+          <div class="key"><span class="sw amp"></span> |E<sub>tar</sub>(Δz)| / max|E<sub>tar</sub>|</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note">
+      <b>What you’re seeing:</b> The complex interferometric signal at a pixel is a coherent superposition of scatterers weighted by the axial PSF.
+      Bulk axial translation changes each scatterer’s geometric phase by <code>2k₀Δz</code>, but it also changes its PSF weight. That changes the
+      vector sum and adds a deterministic, pixel‑specific extra phase term (the “displacement‑induced phase error”) on top of the rigid‑body term.
+      <br /><br />
+      <b>Try:</b> set <b>N<sub>s</sub> = 1</b> → φ<sub>error</sub> ≈ 0. Increase N<sub>s</sub> and make σ<sub>z</sub> narrower → larger phase errors.
+      Click “New random scatterers” to see how the error curve depends on the speckle realization (but remains deterministic for that realization).
+      <div class="footer">
+        DIPE concept proposed in the PRESIR paper: <a href="https://doi.org/10.1088/1361-6463/adb3b4" target="_blank" rel="noopener noreferrer">Li <i>et al.</i>, J. Phys. D: Appl. Phys. (2025), DOI: 10.1088/1361-6463/adb3b4</a>.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // =============================
+    // Parameters (units: µm unless noted)
+    // =============================
+    const L = 100;               // scatterers uniform in [-L/2, +L/2]
+    const zMin = -50, zMax = 50; // depth view axis range (µm)
+    const dzMin = -15, dzMax = 15; // slider & plots (µm)
+
+    // λ0 ≈ 0.85 µm (850 nm). With z in µm, k0 is rad/µm.
+    const lambda0_um = 0.85;
+    const k0 = 2 * Math.PI / lambda0_um;
+
+    const PHASOR_CAP = 160; // max individual phasors to draw (subset for large N)
+
+    // =============================
+    // Complex helpers (plain objects)
+    // =============================
+    function C(re, im){ return {re, im}; }
+    function cAdd(a,b){ return {re:a.re+b.re, im:a.im+b.im}; }
+    function cMul(a,b){ return {re:a.re*b.re - a.im*b.im, im:a.re*b.im + a.im*b.re}; }
+    function cConj(a){ return {re:a.re, im:-a.im}; }
+    function cAbs(a){ return Math.hypot(a.re, a.im); }
+    function cArg(a){ return Math.atan2(a.im, a.re); }
+
+    function wrapToPi(x){
+      const twopi = 2*Math.PI;
+      x = (x + Math.PI) % twopi;
+      if (x < 0) x += twopi;
+      return x - Math.PI;
+    }
+
+    // =============================
+    // HiDPI canvas setup
+    // =============================
+    function setupHiDPICanvas(canvas, logicalHeightPx){
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const w = Math.max(10, Math.round(rect.width));
+      const h = logicalHeightPx ? logicalHeightPx : Math.max(10, Math.round(rect.height));
+      canvas.width = Math.round(w*dpr);
+      canvas.height = Math.round(h*dpr);
+      const ctx = canvas.getContext("2d");
+      ctx.setTransform(dpr,0,0,dpr,0,0);
+      return {ctx, w, h};
+    }
+
+    // =============================
+    // State
+    // =============================
+    let sigmaZ = 1.0;
+    let Ns = 50;
+    let seedCounter = 1;
+
+    // scatterer: { z, A, c, s } where c/s = cos/sin(2*k0*z)
+    let scatterers = [];
+    let Amax = 1.0;
+    let Amean = 1.0; // mean scatterer amplitude (used for the uniform‑amplitude reference)
+
+    // Reference field at Δz=0 (kept for measured phase computation)
+    let E_ref = C(0,0);
+    let E_ref_phase = C(0,0); // scaled reference (phase-stable)
+
+    // Precomputed curves
+    let dzGrid = [];
+    let phiIdealGrid = [];
+    let phiMeasGrid = [];
+    let phiErrGrid = [];
+    let ampGrid = [];     // |E_tar|
+    let ampNormGrid = []; // |E_tar| / EtarMaxMag
+
+    // normalization
+    let EtarMaxMag = 1.0;
+
+    // For phasor visualization (subset indices)
+    let phasorIdx = [];
+
+    // Current Δz
+    let deltaZ = 0;
+
+    // =============================
+    // Model
+    // =============================
+    function PSF(z){
+      const s2 = sigmaZ*sigmaZ;
+      return Math.exp(-(z*z)/(2*s2));
+    }
+
+    function chooseDzPlotStep(){
+      // keep UI responsive for N=1000/10000 across ±15 µm range
+      if (Ns <= 100) return 0.02;
+      if (Ns <= 1000) return 0.05;
+      return 0.10;
+    }
+
+    function generateScatterers(N){
+      const arr = new Array(N);
+      let localAmax = 1e-9;
+      let sumA = 0;
+      for (let j=0; j<N; j++){
+        const z = (Math.random()-0.5)*L;
+        const A = 0.5 + 0.5*Math.random();
+        const phi0 = 2*k0*z;
+        arr[j] = { z, A, c:Math.cos(phi0), s:Math.sin(phi0) };
+        if (A > localAmax) localAmax = A;
+        sumA += A;
+      }
+      Amax = localAmax;
+      Amean = (N > 0) ? (sumA / N) : 1.0;
+      return arr;
+    }
+
+    function buildPhasorSubset(){
+      phasorIdx = [];
+      const N = scatterers.length;
+      if (N <= PHASOR_CAP){
+        for (let i=0;i<N;i++) phasorIdx.push(i);
+        return;
+      }
+      // sample without replacement
+      const chosen = new Set();
+      while (chosen.size < PHASOR_CAP){
+        const idx = Math.floor(Math.random()*N);
+        chosen.add(idx);
+      }
+      phasorIdx = Array.from(chosen);
+    }
+
+    // Optimized: only one trig per Δz for the global factor exp(i*2*k0*Δz)
+    function computeField(deltaZ_um, wantContrib, wantUniform=false){
+      const th = 2*k0*deltaZ_um;
+      const rot = C(Math.cos(th), Math.sin(th));
+
+      // ---- Phase-stable coherent sum ----
+      // When σz is small and |z+Δz| is large, PSF(z+Δz)=exp(-a) can underflow to 0 in floating point.
+      // That makes E_tar or (E_tar·conj(E_ref)) collapse to 0 and produces spurious phase errors.
+      //
+      // Fix: factor out exp(-aMin) where a = (z+Δz)^2/(2σ^2). This scaling is strictly real/positive,
+      // so it does NOT change phase, but it prevents the complex sum from becoming exactly 0.
+      const inv2s2 = 1/(2*sigmaZ*sigmaZ);
+      let aMin = Infinity;
+
+      let sum0Scaled = C(0,0); // weights: exp(-(a-aMin))  (no exp(-aMin) factor)
+      let sum0UniformScaled = wantUniform ? C(0,0) : null;
+
+      for (let i=0;i<scatterers.length;i++){
+        const sj = scatterers[i];
+        const zp = sj.z + deltaZ_um;
+        const a = (zp*zp) * inv2s2;
+
+        if (a < aMin){
+          if (aMin < Infinity){
+            const rescale = Math.exp(-(aMin - a)); // in (0,1]
+            sum0Scaled.re *= rescale;
+            sum0Scaled.im *= rescale;
+            if (wantUniform){
+              sum0UniformScaled.re *= rescale;
+              sum0UniformScaled.im *= rescale;
+            }
+          }
+          aMin = a;
+        }
+
+        const wScaled = Math.exp(-(a - aMin)); // <= 1
+        const ampScaled = sj.A * wScaled;
+        sum0Scaled.re += ampScaled * sj.c;
+        sum0Scaled.im += ampScaled * sj.s;
+
+        if (wantUniform){
+          const ampUScaled = Amean * wScaled;
+          sum0UniformScaled.re += ampUScaled * sj.c;
+          sum0UniformScaled.im += ampUScaled * sj.s;
+        }
+      }
+
+      if (!Number.isFinite(aMin)) aMin = 0;
+
+      // Phase-preserving field (drops the real positive factor exp(-aMin))
+      const sumPhase = cMul(rot, sum0Scaled);
+
+      // Actual field includes exp(-aMin) amplitude factor
+      const scaleReal = Math.exp(-aMin);
+      const sum = C(sumPhase.re * scaleReal, sumPhase.im * scaleReal);
+
+      const sumUniformPhase = wantUniform ? cMul(rot, sum0UniformScaled) : null;
+      const sumUniform = wantUniform ? C(sumUniformPhase.re * scaleReal, sumUniformPhase.im * scaleReal) : null;
+
+      let contrib = null;
+      if (wantContrib){
+        // For drawing individual phasors we can use the true (possibly underflowing) PSF weight.
+        contrib = new Array(phasorIdx.length);
+        for (let k=0;k<phasorIdx.length;k++){
+          const i = phasorIdx[k];
+          const sj = scatterers[i];
+          const zp = sj.z + deltaZ_um;
+          const a = (zp*zp) * inv2s2;
+          const w = Math.exp(-a); // PSF(z+Δz)
+          const amp = sj.A * w;
+
+          const base = C(amp * sj.c, amp * sj.s);
+          contrib[k] = cMul(rot, base);
+        }
+      }
+      return { sum, sumPhase, contrib, sumUniform };
+    }
+
+    function computePhaseAt(deltaZ_um){
+      const { sum:E_tar, sumPhase:E_tar_phase } = computeField(deltaZ_um, false);
+
+      // Use the phase-stable fields for phase differences (avoids underflow when |E| is tiny).
+      const meas = wrapToPi(cArg(cMul(E_tar_phase, cConj(E_ref_phase))));
+      const ideal = wrapToPi(2*k0*deltaZ_um);
+      const err = wrapToPi(meas - ideal);
+
+      // Amplitude is taken from the true field (includes PSF attenuation).
+      const amp = cAbs(E_tar);
+      return { E_tar, meas, ideal, err, amp };
+    }
+
+    // =============================
+    // Precompute curves whenever scatterers or σ changes
+    // =============================
+    function recomputeCurves(){
+      const step = chooseDzPlotStep();
+
+      dzGrid = [];
+      phiIdealGrid = [];
+      phiMeasGrid = [];
+      phiErrGrid = [];
+      ampGrid = [];
+
+      // E_ref
+      const refOut = computeField(0, false);
+      E_ref = refOut.sum;
+      E_ref_phase = refOut.sumPhase;
+
+      // sweep
+      for (let dz = dzMin; dz <= dzMax + 1e-12; dz += step){
+        const dzv = +dz.toFixed(6);
+        dzGrid.push(dzv);
+
+        const out = computePhaseAt(dzv);
+        phiIdealGrid.push(out.ideal);
+        phiMeasGrid.push(out.meas);
+        phiErrGrid.push(out.err);
+        ampGrid.push(out.amp);
+      }
+
+      EtarMaxMag = 1e-12;
+      for (let i=0;i<ampGrid.length;i++) EtarMaxMag = Math.max(EtarMaxMag, ampGrid[i]);
+
+      ampNormGrid = ampGrid.map(a => a / EtarMaxMag);    }
+
+    // =============================
+    // Drawing helpers
+    // =============================
+    function clear(ctx,w,h){
+      ctx.clearRect(0,0,w,h);
+      const grad = ctx.createRadialGradient(w*0.6, h*0.2, 30, w*0.5, h*0.5, Math.max(w,h));
+      grad.addColorStop(0, "rgba(15,20,28,0.55)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0,0,w,h);
+    }
+
+    function drawArrow(ctx,x0,y0,x1,y1,color,width,dash=null,alpha=1){
+      const dx=x1-x0, dy=y1-y0;
+      const len=Math.hypot(dx,dy) || 1;
+      const ux=dx/len, uy=dy/len;
+      const headLen = Math.min(14, Math.max(8, len*0.12));
+      const hx = x1 - ux*headLen;
+      const hy = y1 - uy*headLen;
+
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = width;
+      ctx.lineCap = "round";
+      if (dash) ctx.setLineDash(dash);
+      ctx.beginPath();
+      ctx.moveTo(x0,y0);
+      ctx.lineTo(x1,y1);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x1,y1);
+      ctx.lineTo(hx + (-uy)*(headLen*0.45), hy + (ux)*(headLen*0.45));
+      ctx.lineTo(hx + (uy)*(headLen*0.45),  hy + (-ux)*(headLen*0.45));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // =============================
+    // Plot 1: Depth + PSF
+    // =============================
+    function drawDepthView(){
+      const canvas = document.getElementById("depthCanvas");
+      const {ctx,w,h} = setupHiDPICanvas(canvas, 260);
+      clear(ctx,w,h);
+
+      const pad = 34;
+      const x0=pad, x1=w-pad, y0=h-pad, y1=pad;
+
+      const xOfZ = (z)=> x0 + ((z - zMin)/(zMax - zMin))*(x1-x0);
+
+      // PSF envelope
+      const psfColor = getComputedStyle(document.documentElement).getPropertyValue("--psf").trim();
+      ctx.save();
+      ctx.strokeStyle = psfColor;
+      ctx.lineWidth = 2.2;
+      ctx.globalAlpha = 0.9;
+
+      const psfFill = ctx.createLinearGradient(0,y1,0,y0);
+      psfFill.addColorStop(0, "rgba(88,166,255,0.30)");
+      psfFill.addColorStop(1, "rgba(88,166,255,0.00)");
+      ctx.fillStyle = psfFill;
+
+      ctx.beginPath();
+      for (let i=0;i<=500;i++){
+        const z = zMin + (i/500)*(zMax - zMin);
+        const p = PSF(z);
+        const xx = xOfZ(z);
+        const yy = y0 - p*(y0-y1)*0.72;
+        if (i===0) ctx.moveTo(xx,yy);
+        else ctx.lineTo(xx,yy);
+      }
+      ctx.lineTo(x1,y0);
+      ctx.lineTo(x0,y0);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i=0;i<=500;i++){
+        const z = zMin + (i/500)*(zMax - zMin);
+        const p = PSF(z);
+        const xx = xOfZ(z);
+        const yy = y0 - p*(y0-y1)*0.72;
+        if (i===0) ctx.moveTo(xx,yy);
+        else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // Axis baseline and ticks
+      ctx.save();
+      ctx.strokeStyle = "rgba(92,107,128,0.85)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x0,y0); ctx.lineTo(x1,y0);
+      ctx.stroke();
+
+      // vertical line at z=0
+      const xPix = xOfZ(0);
+      ctx.strokeStyle = "rgba(234,238,246,0.18)";
+      ctx.setLineDash([4,4]);
+      ctx.beginPath();
+      ctx.moveTo(xPix,y1); ctx.lineTo(xPix,y0);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "rgba(170,182,197,0.95)";
+      ctx.font = "11px ui-sans-serif, system-ui";
+      ctx.textAlign="center";
+      ctx.textBaseline="top";
+      const ticks=[-50,-25,0,25,50];
+      for (const t of ticks){
+        const xx = xOfZ(t);
+        ctx.strokeStyle="rgba(92,107,128,0.55)";
+        ctx.beginPath();
+        ctx.moveTo(xx,y0); ctx.lineTo(xx,y0+5);
+        ctx.stroke();
+        ctx.fillText(String(t), xx, y0+7);
+      }
+      ctx.textBaseline="bottom";
+      ctx.fillText("z (µm)", (x0+x1)/2, h-6);
+      ctx.restore();
+
+      // Scatterers
+      const showBars = document.getElementById("showWeightBars").checked;
+      const fast = scatterers.length > 1200;
+
+      for (let i=0;i<scatterers.length;i++){
+        const sj = scatterers[i];
+        const zShift = sj.z + deltaZ;
+        if (zShift < zMin-2 || zShift > zMax+2) continue;
+
+        const wgt = sj.A * PSF(zShift);        // absolute A·PSF
+        const norm = Math.max(0, Math.min(1, wgt / Amax)); // since PSF<=1, Amax gives a stable scale
+
+        const alpha = Math.min(1, 0.12 + 0.88*norm);
+        const dotCol = `rgba(167,139,250,${alpha.toFixed(3)})`;
+        const xx = xOfZ(zShift);
+
+        if (showBars){
+          const barH = norm * (y0-y1)*0.48;
+          const barCol = `rgba(52,211,153,${(0.18 + 0.72*alpha).toFixed(3)})`;
+          if (fast){
+            ctx.fillStyle = barCol;
+            ctx.fillRect(xx-1, y0-barH, 2, barH);
+          } else {
+            ctx.strokeStyle = barCol;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(xx, y0);
+            ctx.lineTo(xx, y0-barH);
+            ctx.stroke();
+          }
+        }
+
+        ctx.fillStyle = dotCol;
+        if (fast){
+          ctx.fillRect(xx-1.5, y0-3.5, 3, 3);
+        } else {
+          ctx.beginPath();
+          ctx.arc(xx, y0-2, 3.2, 0, Math.PI*2);
+          ctx.fill();
+        }
+      }
+
+      // Caption
+      ctx.save();
+      ctx.fillStyle="rgba(170,182,197,0.95)";
+      ctx.font="12px ui-sans-serif, system-ui";
+      ctx.textAlign="left";
+      ctx.textBaseline="top";
+      ctx.fillText("PSF fixed at z = 0; scatterers shifted by Δz", x0, y1+2);
+      ctx.restore();
+    }
+
+    // =============================
+    // Plot 2: Phasor view (FIX #1 + FIX #2)
+    //   - Fixed scale: 1.0 corresponds to max|E_tar| (same normalization as Plot 3 amplitude)
+    //   - Removed E_ref arrow (redundant in the display), but E_ref is still used for Δφ_measured math
+    // =============================
+    function drawPhasorView(){
+      const canvas = document.getElementById("phasorCanvas");
+      const {ctx,w,h} = setupHiDPICanvas(canvas, 260);
+      clear(ctx,w,h);
+
+      const pad=24;
+      const cx=w/2, cy=h/2;
+
+      // grid
+      ctx.save();
+      ctx.strokeStyle="rgba(36,48,66,0.85)";
+      ctx.lineWidth=1;
+      for (let i=-4;i<=4;i++){
+        const x=cx+(i/4)*(w/2-pad);
+        const y=cy+(i/4)*(h/2-pad);
+        ctx.beginPath(); ctx.moveTo(x,pad); ctx.lineTo(x,h-pad); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(pad,y); ctx.lineTo(w-pad,y); ctx.stroke();
+      }
+      ctx.restore();
+
+      // axes
+      ctx.save();
+      ctx.strokeStyle="rgba(92,107,128,0.9)";
+      ctx.lineWidth=1.2;
+      ctx.beginPath();
+      ctx.moveTo(pad,cy); ctx.lineTo(w-pad,cy);
+      ctx.moveTo(cx,pad); ctx.lineTo(cx,h-pad);
+      ctx.stroke();
+      ctx.restore();
+
+      const showPh = document.getElementById("showPhasors").checked;
+
+      // compute current, plus subset contributions if needed
+      const { sum:E_tar_raw, sumPhase:E_tar_phase, contrib } = computeField(deltaZ, showPh);
+
+      const idealCb = document.getElementById("showIdealRef");
+      const showIdeal = idealCb ? idealCb.checked : true;
+
+      // Normalize by EtarMaxMag for the full sweep (same as Plot 3 amplitude normalization)
+      const inv = 1/EtarMaxMag;
+      const E_tar = C(E_tar_raw.re*inv, E_tar_raw.im*inv);
+
+      // Ideal rigid‑body reference (no reweighting):
+      //   E_ideal(Δz) = E_ref · exp(i·2k₀Δz)
+      // For Plot 2 we draw it with *unit magnitude* (|E_ideal| = 1) so it stays visible;
+      // the angle is still the correct rigid‑body phase.
+      let E_ideal_unit = null;
+      if (showIdeal){
+        const thIdeal = 2*k0*deltaZ;
+        const rotIdeal = C(Math.cos(thIdeal), Math.sin(thIdeal));
+        const E_ideal_raw = cMul(rotIdeal, E_ref_phase);
+        const mag = cAbs(E_ideal_raw);
+        if (mag > 1e-12){
+          const ang = cArg(E_ideal_raw);
+          E_ideal_unit = C(Math.cos(ang), Math.sin(ang));
+        } else {
+          // fallback if the reference magnitude is ~0 (rare)
+          E_ideal_unit = rotIdeal; // already unit magnitude
+        }
+      }
+
+      // FIXED plot scale: |E| = 1 maps to radius R (so arrow lengths truly track |E_tar|/max)
+      const R = Math.min(w,h)*0.36;
+      const scale = R;
+      const toX = (re)=> cx + re*scale;
+      const toY = (im)=> cy - im*scale;
+
+      // unit circle representing |E| = 1 (i.e., max|E_tar|)
+      ctx.save();
+      ctx.strokeStyle = "rgba(255,255,255,0.18)";
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, 2*Math.PI);
+      ctx.stroke();
+      ctx.restore();
+
+      // individual phasors (subset)
+      if (showPh && contrib){
+        ctx.save();
+        ctx.strokeStyle="rgba(139,149,167,0.55)";
+        ctx.lineWidth=1;
+        for (let i=0;i<contrib.length;i++){
+          const e = contrib[i];
+          const en = C(e.re*inv, e.im*inv);
+          ctx.beginPath();
+          ctx.moveTo(cx,cy);
+          ctx.lineTo(toX(en.re), toY(en.im));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+      // Colors
+      const css = getComputedStyle(document.documentElement);
+      const colTar = css.getPropertyValue("--tar").trim();
+      const colUni = css.getPropertyValue("--uniform").trim();
+
+      // Ideal rigid‑body reference (pink dashed line, unit magnitude)
+      if (showIdeal && E_ideal_unit){
+        const xr = toX(E_ideal_unit.re), yr = toY(E_ideal_unit.im);
+        ctx.save();
+        ctx.strokeStyle = colUni;
+        ctx.globalAlpha = 0.90;
+        ctx.lineWidth = 3.0;
+        ctx.lineCap = "round";
+        ctx.setLineDash([6,5]);
+        ctx.beginPath();
+        ctx.moveTo(cx,cy);
+        ctx.lineTo(xr,yr);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
+      // E_tar arrow (primary)
+      drawArrow(ctx, cx, cy, toX(E_tar.re), toY(E_tar.im), colTar, 4.5);
+// measured phase difference label (still referenced to E_ref internally)
+      const dphi = wrapToPi(cArg(cMul(E_tar_phase, cConj(E_ref_phase))));
+      const magN = cAbs(E_tar); // |E_tar|/max
+
+      ctx.save();
+      ctx.fillStyle="rgba(170,182,197,0.95)";
+      ctx.font="12px ui-sans-serif, system-ui";
+      ctx.textAlign="left";
+      ctx.textBaseline="top";
+      ctx.fillText(`Δφ_measured = ${dphi.toFixed(3)} rad`, pad, pad+4);
+      ctx.fillText(`|E_tar|/max = ${magN.toFixed(3)}`, pad, pad+20);
+
+      // axis labels
+      ctx.textAlign="right";
+      ctx.textBaseline="top";
+      ctx.fillText("Re", w-pad, cy+6);
+      ctx.textAlign="left";
+      ctx.textBaseline="top";
+      ctx.fillText("Im", cx+6, pad);
+      ctx.restore();
+    }
+
+    // =============================
+    // Plot 3a: phase vs Δz
+    // =============================
+    function drawPhasePlot(){
+      const canvas = document.getElementById("phaseCanvas");
+      const {ctx,w,h} = setupHiDPICanvas(canvas, 260);
+      clear(ctx,w,h);
+
+      const padL=54, padR=18, padT=20, padB=34;
+      const x0=padL, x1=w-padR, y0=h-padB, y1=padT;
+
+      const xOfDz = (dz)=> x0 + ((dz - dzMin)/(dzMax - dzMin))*(x1-x0);
+      const yOfPhi = (phi)=> y0 - ((phi + Math.PI)/(2*Math.PI))*(y0-y1);
+
+      // grid
+      ctx.save();
+      ctx.strokeStyle="rgba(36,48,66,0.8)";
+      ctx.lineWidth=1;
+      for (let i=0;i<=6;i++){
+        const yy = y1 + (i/6)*(y0-y1);
+        ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x1,yy); ctx.stroke();
+      }
+      for (let i=0;i<=6;i++){
+        const xx = x0 + (i/6)*(x1-x0);
+        ctx.beginPath(); ctx.moveTo(xx,y1); ctx.lineTo(xx,y0); ctx.stroke();
+      }
+      ctx.restore();
+
+      // box
+      ctx.save();
+      ctx.strokeStyle="rgba(92,107,128,0.9)";
+      ctx.lineWidth=1.2;
+      ctx.strokeRect(x0,y1,x1-x0,y0-y1);
+      ctx.restore();
+
+      // y ticks
+      ctx.save();
+      ctx.fillStyle="rgba(170,182,197,0.95)";
+      ctx.font="11px ui-sans-serif, system-ui";
+      ctx.textAlign="right";
+      ctx.textBaseline="middle";
+      const yTicks=[
+        {v:-Math.PI, t:"-π"},
+        {v:-Math.PI/2, t:"-π/2"},
+        {v:0, t:"0"},
+        {v:Math.PI/2, t:"π/2"},
+        {v:Math.PI, t:"π"},
+      ];
+      for (const yt of yTicks){
+        ctx.fillText(yt.t, x0-8, yOfPhi(yt.v));
+      }
+
+      // x ticks
+      ctx.textAlign="center";
+      ctx.textBaseline="top";
+      const xTicks=[-15,-10,-5,0,5,10,15];
+      for (const xt of xTicks){
+        ctx.fillText(String(xt), xOfDz(xt), y0+8);
+      }
+      ctx.textBaseline="bottom";
+      ctx.fillText("Δz (µm)", (x0+x1)/2, h-6);
+
+      // y label
+      ctx.save();
+      ctx.translate(14,(y0+y1)/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.textAlign="center";
+      ctx.textBaseline="alphabetic";
+      ctx.fillText("phase (rad, wrapped)", 0, 0);
+      ctx.restore();
+      ctx.restore();
+
+      const css = getComputedStyle(document.documentElement);
+      const colIdeal = css.getPropertyValue("--ideal").trim();
+      const colMeas  = css.getPropertyValue("--accent").trim();
+      const colErr   = css.getPropertyValue("--err").trim();
+
+      function strokeCurve(arr,color,width){
+        ctx.save();
+        ctx.strokeStyle=color;
+        ctx.lineWidth=width;
+        ctx.lineJoin="round";
+        ctx.lineCap="round";
+        ctx.beginPath();
+        for (let i=0;i<dzGrid.length;i++){
+          const xx=xOfDz(dzGrid[i]);
+          const yy=yOfPhi(arr[i]);
+          if (i===0) ctx.moveTo(xx,yy);
+          else ctx.lineTo(xx,yy);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      strokeCurve(phiIdealGrid, colIdeal, 1.7);
+      strokeCurve(phiMeasGrid,  colMeas,  2.4);
+      strokeCurve(phiErrGrid,   colErr,   2.2);
+
+      // cursor at current Δz
+      const xCur = xOfDz(deltaZ);
+      ctx.save();
+      ctx.strokeStyle="rgba(255,255,255,0.35)";
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(xCur,y1); ctx.lineTo(xCur,y0); ctx.stroke();
+      ctx.setLineDash([]);
+
+      // marker at nearest point
+      const idx = nearestDzIndex(deltaZ);
+      dot(ctx, xCur, yOfPhi(phiIdealGrid[idx]), colIdeal);
+      dot(ctx, xCur, yOfPhi(phiMeasGrid[idx]),  colMeas);
+      dot(ctx, xCur, yOfPhi(phiErrGrid[idx]),   colErr);
+      ctx.restore();
+    }
+
+    // =============================
+    // Plot 3b: amplitude vs Δz (normalized)
+    // =============================
+    function drawAmpPlot(){
+      const canvas = document.getElementById("ampCanvas");
+      const {ctx,w,h} = setupHiDPICanvas(canvas, 190);
+      clear(ctx,w,h);
+
+      const padL=54, padR=18, padT=18, padB=34;
+      const x0=padL, x1=w-padR, y0=h-padB, y1=padT;
+
+      const xOfDz = (dz)=> x0 + ((dz - dzMin)/(dzMax - dzMin))*(x1-x0);
+      const yOfA  = (a)=>  y0 - a*(y0-y1); // a in [0,1]
+
+      // grid
+      ctx.save();
+      ctx.strokeStyle="rgba(36,48,66,0.8)";
+      ctx.lineWidth=1;
+      for (let i=0;i<=4;i++){
+        const yy = y1 + (i/4)*(y0-y1);
+        ctx.beginPath(); ctx.moveTo(x0,yy); ctx.lineTo(x1,yy); ctx.stroke();
+      }
+      for (let i=0;i<=6;i++){
+        const xx = x0 + (i/6)*(x1-x0);
+        ctx.beginPath(); ctx.moveTo(xx,y1); ctx.lineTo(xx,y0); ctx.stroke();
+      }
+      ctx.restore();
+
+      // box
+      ctx.save();
+      ctx.strokeStyle="rgba(92,107,128,0.9)";
+      ctx.lineWidth=1.2;
+      ctx.strokeRect(x0,y1,x1-x0,y0-y1);
+      ctx.restore();
+
+      // y ticks
+      ctx.save();
+      ctx.fillStyle="rgba(170,182,197,0.95)";
+      ctx.font="11px ui-sans-serif, system-ui";
+      ctx.textAlign="right";
+      ctx.textBaseline="middle";
+      const yTicks=[
+        {v:0, t:"0"},
+        {v:0.5, t:"0.5"},
+        {v:1, t:"1"},
+      ];
+      for (const yt of yTicks){
+        ctx.fillText(yt.t, x0-8, yOfA(yt.v));
+      }
+
+      // x ticks
+      ctx.textAlign="center";
+      ctx.textBaseline="top";
+      const xTicks=[-15,-10,-5,0,5,10,15];
+      for (const xt of xTicks){
+        ctx.fillText(String(xt), xOfDz(xt), y0+8);
+      }
+      ctx.textBaseline="bottom";
+      ctx.fillText("Δz (µm)", (x0+x1)/2, h-6);
+
+      // y label
+      ctx.save();
+      ctx.translate(14,(y0+y1)/2);
+      ctx.rotate(-Math.PI/2);
+      ctx.textAlign="center";
+      ctx.textBaseline="alphabetic";
+      ctx.fillText("|E_tar| / max", 0, 0);
+      ctx.restore();
+      ctx.restore();
+
+      const css = getComputedStyle(document.documentElement);
+      const colAmp = css.getPropertyValue("--ok").trim();
+
+      // curve
+      ctx.save();
+      ctx.strokeStyle = colAmp;
+      ctx.lineWidth = 2.3;
+      ctx.lineJoin="round";
+      ctx.lineCap="round";
+      ctx.beginPath();
+      for (let i=0;i<dzGrid.length;i++){
+        const xx=xOfDz(dzGrid[i]);
+        const yy=yOfA(ampNormGrid[i]);
+        if (i===0) ctx.moveTo(xx,yy);
+        else ctx.lineTo(xx,yy);
+      }
+      ctx.stroke();
+      ctx.restore();
+
+      // cursor
+      const xCur=xOfDz(deltaZ);
+      ctx.save();
+      ctx.strokeStyle="rgba(255,255,255,0.35)";
+      ctx.lineWidth=1;
+      ctx.setLineDash([4,4]);
+      ctx.beginPath(); ctx.moveTo(xCur,y1); ctx.lineTo(xCur,y0); ctx.stroke();
+      ctx.setLineDash([]);
+
+      const idx=nearestDzIndex(deltaZ);
+      dot(ctx, xCur, yOfA(ampNormGrid[idx]), colAmp);
+      ctx.restore();
+
+      // title text
+      ctx.save();
+      ctx.fillStyle="rgba(170,182,197,0.95)";
+      ctx.font="12px ui-sans-serif, system-ui";
+      ctx.textAlign="left";
+      ctx.textBaseline="top";
+      ctx.fillText("Coherent‑sum amplitude (normalized) vs Δz", x0, 2);
+      ctx.restore();
+    }
+
+    function dot(ctx,x,y,color){
+      ctx.fillStyle=color;
+      ctx.beginPath();
+      ctx.arc(x,y,3.6,0,Math.PI*2);
+      ctx.fill();
+      ctx.strokeStyle="rgba(0,0,0,0.35)";
+      ctx.lineWidth=1;
+      ctx.stroke();
+    }
+
+    function nearestDzIndex(dz){
+      // dzGrid is monotonic; linear scan is fine (<=~1500 points).
+      // For speed, do a quick approximate index using grid step:
+      const step = (dzGrid.length>1) ? (dzGrid[1]-dzGrid[0]) : 1;
+      let idx = Math.round((dz - dzMin)/step);
+      idx = Math.max(0, Math.min(dzGrid.length-1, idx));
+      // one-step refinement
+      if (idx>0 && Math.abs(dzGrid[idx-1]-dz) < Math.abs(dzGrid[idx]-dz)) idx--;
+      if (idx<dzGrid.length-1 && Math.abs(dzGrid[idx+1]-dz) < Math.abs(dzGrid[idx]-dz)) idx++;
+      return idx;
+    }
+
+    // =============================
+    // UI updates
+    // =============================
+    function setReadouts(out){
+      const rad2deg = 180/Math.PI;
+
+      document.getElementById("sigmaReadout").textContent = `${sigmaZ.toFixed(1)} µm`;      document.getElementById("seedReadout").textContent = `Speckle #${seedCounter}`;
+      document.getElementById("dzReadout").textContent = `${deltaZ.toFixed(3)} µm`;
+
+      document.getElementById("phiIdeal").textContent = out.ideal.toFixed(3);
+      document.getElementById("phiMeas").textContent  = out.meas.toFixed(3);
+      document.getElementById("phiErr").textContent   = out.err.toFixed(3);
+
+      document.getElementById("phiIdealDeg").textContent = (out.ideal*rad2deg).toFixed(1);
+      document.getElementById("phiMeasDeg").textContent  = (out.meas*rad2deg).toFixed(1);
+      document.getElementById("phiErrDeg").textContent   = (out.err*rad2deg).toFixed(1);
+
+      const norm = out.amp / EtarMaxMag;
+      document.getElementById("magReadout").textContent =
+        `|E_tar|: ${out.amp.toFixed(3)} • |E_tar|/max: ${norm.toFixed(3)}`;
+    }
+
+    function redrawAll(){
+      const out = computePhaseAt(deltaZ);
+      setReadouts(out);
+
+      drawDepthView();
+      drawPhasorView();
+      drawPhasePlot();
+      drawAmpPlot();
+    }
+
+    function regenerateScatterers(){
+      scatterers = generateScatterers(Ns);
+      buildPhasorSubset();
+      recomputeCurves();
+      redrawAll();
+    }
+
+    // =============================
+    // Init / events
+    // =============================
+    function init(){
+      // init state from UI
+      sigmaZ = parseFloat(document.getElementById("sigma").value);
+      Ns = parseInt(document.getElementById("ns").value, 10);
+      deltaZ = parseFloat(document.getElementById("dz").value);
+
+      scatterers = generateScatterers(Ns);
+      buildPhasorSubset();
+      recomputeCurves();
+      redrawAll();
+
+      // resize handling
+      let resizeTimer=null;
+      window.addEventListener("resize", ()=>{
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(()=> redrawAll(), 60);
+      });
+
+      // Δz slider (moved into bottom panel)
+      document.getElementById("dz").addEventListener("input", (e)=>{
+        deltaZ = parseFloat(e.target.value);
+        redrawAll();
+      });
+
+      // σz slider
+      document.getElementById("sigma").addEventListener("input", (e)=>{
+        sigmaZ = parseFloat(e.target.value);
+        recomputeCurves();
+        redrawAll();
+      });
+
+      // Ns select
+      document.getElementById("ns").addEventListener("change", (e)=>{
+        Ns = parseInt(e.target.value, 10);
+
+        // for very large N, default to hiding phasors (user can re-enable)
+        if (Ns > 500){
+          document.getElementById("showPhasors").checked = false;
+        } else {
+          document.getElementById("showPhasors").checked = true;
+        }
+
+        seedCounter++;
+        regenerateScatterers();
+      });
+
+      // randomize button
+      document.getElementById("randBtn").addEventListener("click", ()=>{
+        seedCounter++;
+        regenerateScatterers();
+      });
+
+      // checkboxes
+      document.getElementById("showPhasors").addEventListener("change", ()=> redrawAll());
+      document.getElementById("showWeightBars").addEventListener("change", ()=> redrawAll());
+
+      // Ideal reference toggle (Plot 2)
+      const idealCb = document.getElementById("showIdealRef");
+      const idealLegend = document.getElementById("idealLegend");
+      if (idealCb){
+        if (idealLegend) idealLegend.style.display = idealCb.checked ? "" : "none";
+        idealCb.addEventListener("change", (e)=>{
+          if (idealLegend) idealLegend.style.display = e.target.checked ? "" : "none";
+          redrawAll();
+        });
+      }
+
+
+      // Keyboard shortcuts for Δz (works even when the slider isn't focused)
+      window.addEventListener("keydown", (e)=>{
+        const k = e.key;
+        const isArrow = (k === "ArrowLeft" || k === "ArrowRight" || k === "ArrowUp" || k === "ArrowDown");
+        if (!isArrow) return;
+
+        const active = document.activeElement;
+
+        // Don't hijack arrow keys while the user is interacting with controls that use arrows.
+        if (active){
+          const tag = (active.tagName || "").toLowerCase();
+          if (tag === "select" || tag === "textarea") return;
+
+          if (tag === "input"){
+            const type = (active.type || "").toLowerCase();
+
+            // Let other sliders (e.g. σz) keep their native arrow-key behavior.
+            if (type === "range" && active.id !== "dz") return;
+
+            // If it's a text-like input, don't steal cursor navigation.
+            if (type !== "range" && type !== "checkbox" && type !== "button" && type !== "submit" && type !== "reset") return;
+          }
+        }
+
+        const dzEl = document.getElementById("dz");
+        const baseStep = parseFloat(dzEl.step) || 0.001;
+        const step = e.shiftKey ? baseStep * 10 : baseStep;
+
+        const dir = (k === "ArrowRight" || k === "ArrowUp") ? 1 : -1;
+
+        const min = parseFloat(dzEl.min);
+        const max = parseFloat(dzEl.max);
+
+        let v = parseFloat(dzEl.value);
+        if (!Number.isFinite(v)) v = 0;
+
+        v = v + dir * step;
+        v = Math.max(min, Math.min(max, v));
+
+        // Snap to the underlying slider step to avoid floating-point drift.
+        v = Math.round(v / baseStep) * baseStep;
+
+        const decimals = (String(baseStep).split(".")[1] || "").length;
+        dzEl.value = v.toFixed(decimals);
+
+        deltaZ = parseFloat(dzEl.value);
+        redrawAll();
+
+        e.preventDefault();
+      }, { passive: false });
+
+    }
+
+    window.addEventListener("DOMContentLoaded", init);
+  </script>
+</body>
+</html>
