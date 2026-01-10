@@ -1,5 +1,5 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite our original paper in J. Phys. D: Appl. Phys."
+message: "If you use this software for future publications, please cite our original paper published in J. Phys. D: Appl. Phys. DOI: 10.1088/1361-6463/adb3b4"
 title: "DIPE Visualizer (Displacement-Induced Phase Error)"
 type: software
 authors:
