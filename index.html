@@ -473,6 +473,7 @@
 
     // normalization
     let EtarMaxMag = 1.0;
+    let min_aMin = 1e3;
 
     // For phasor visualization (subset indices)
     let phasorIdx = [];
@@ -584,30 +585,26 @@
       const scaleReal = Math.exp(-aMin);
       const sum = C(sumPhase.re * scaleReal, sumPhase.im * scaleReal);
 
-      const sumUniformPhase = wantUniform ? cMul(rot, sum0UniformScaled) : null;
-      const sumUniform = wantUniform ? C(sumUniformPhase.re * scaleReal, sumUniformPhase.im * scaleReal) : null;
-
       let contrib = null;
       if (wantContrib){
-        // For drawing individual phasors we can use the true (possibly underflowing) PSF weight.
         contrib = new Array(phasorIdx.length);
         for (let k=0;k<phasorIdx.length;k++){
           const i = phasorIdx[k];
           const sj = scatterers[i];
           const zp = sj.z + deltaZ_um;
           const a = (zp*zp) * inv2s2;
-          const w = Math.exp(-a); // PSF(z+Δz)
-          const amp = sj.A * w;
+          const wScaled = Math.exp(-(a - aMin));   // in (0,1]
+          const ampScaled = sj.A * wScaled;
 
-          const base = C(amp * sj.c, amp * sj.s);
-          contrib[k] = cMul(rot, base);
+          const base = C(ampScaled * sj.c, ampScaled * sj.s);
+          contrib[k] = cMul(rot, base);            // matches sumPhase units (no exp(-aMin))
         }
       }
-      return { sum, sumPhase, contrib, sumUniform };
+      return { sum, sumPhase, aMin, contrib};
     }
 
     function computePhaseAt(deltaZ_um){
-      const { sum:E_tar, sumPhase:E_tar_phase } = computeField(deltaZ_um, false);
+      const { sum:E_tar, sumPhase:E_tar_phase, aMin } = computeField(deltaZ_um, false);
 
       // Use the phase-stable fields for phase differences (avoids underflow when |E| is tiny).
       const meas = wrapToPi(cArg(cMul(E_tar_phase, cConj(E_ref_phase))));
@@ -616,12 +613,22 @@
 
       // Amplitude is taken from the true field (includes PSF attenuation).
       const amp = cAbs(E_tar);
-      return { E_tar, meas, ideal, err, amp };
+      const amp_scaled = cAbs(E_tar_phase);
+      return { E_tar, meas, ideal, err, amp, amp_scaled, aMin };
     }
 
     // =============================
     // Precompute curves whenever scatterers or σ changes
     // =============================
+    function minOfArray(arr){
+    let m = Infinity;
+    for (let i = 0; i < arr.length; i++){
+      const v = arr[i];
+      if (v < m) m = v;
+    }
+    return m;
+    }
+
     function recomputeCurves(){
       const step = chooseDzPlotStep();
 
@@ -629,7 +636,8 @@
       phiIdealGrid = [];
       phiMeasGrid = [];
       phiErrGrid = [];
-      ampGrid = [];
+      ampGrid_scaled = [];
+      aMin_grid = [];
 
       // E_ref
       const refOut = computeField(0, false);
@@ -645,13 +653,20 @@
         phiIdealGrid.push(out.ideal);
         phiMeasGrid.push(out.meas);
         phiErrGrid.push(out.err);
-        ampGrid.push(out.amp);
+        ampGrid_scaled.push(out.amp_scaled);
+        aMin_grid.push(out.aMin)
+      }
+      
+      min_aMin= minOfArray(aMin_grid)
+      for (let i = 0; i < ampGrid_scaled.length; i++){
+      // IMPORTANT: Math.exp, not exp()
+      ampGrid_scaled[i] = ampGrid_scaled[i] * Math.exp(-(aMin_grid[i] - min_aMin));
       }
 
       EtarMaxMag = 1e-12;
-      for (let i=0;i<ampGrid.length;i++) EtarMaxMag = Math.max(EtarMaxMag, ampGrid[i]);
+      for (let i=0;i<ampGrid_scaled.length;i++) EtarMaxMag = Math.max(EtarMaxMag, ampGrid_scaled[i]);
 
-      ampNormGrid = ampGrid.map(a => a / EtarMaxMag);    }
+      ampNormGrid = ampGrid_scaled.map(a => a / EtarMaxMag);    }
 
     // =============================
     // Drawing helpers
@@ -876,14 +891,14 @@
       const showPh = document.getElementById("showPhasors").checked;
 
       // compute current, plus subset contributions if needed
-      const { sum:E_tar_raw, sumPhase:E_tar_phase, contrib } = computeField(deltaZ, showPh);
+      const { sum:E_tar_raw, sumPhase:E_tar_phase, aMin, contrib } = computeField(deltaZ, showPh);
 
       const idealCb = document.getElementById("showIdealRef");
       const showIdeal = idealCb ? idealCb.checked : true;
 
       // Normalize by EtarMaxMag for the full sweep (same as Plot 3 amplitude normalization)
-      const inv = 1/EtarMaxMag;
-      const E_tar = C(E_tar_raw.re*inv, E_tar_raw.im*inv);
+      const inv = 1/EtarMaxMag*Math.exp(-(aMin - min_aMin));
+      const E_tar = C(E_tar_phase.re*inv, E_tar_phase.im*inv);
 
       // Ideal rigid‑body reference (no reweighting):
       //   E_ideal(Δz) = E_ref · exp(i·2k₀Δz)
@@ -1246,7 +1261,7 @@
       document.getElementById("phiMeasDeg").textContent  = (out.meas*rad2deg).toFixed(1);
       document.getElementById("phiErrDeg").textContent   = (out.err*rad2deg).toFixed(1);
 
-      const norm = out.amp / EtarMaxMag;
+      const norm = (out.amp_scaled * Math.exp(-(out.aMin - min_aMin))) / EtarMaxMag;
       document.getElementById("magReadout").textContent =
         `Normalized |E_tar|: ${norm.toFixed(3)}`;
     }
