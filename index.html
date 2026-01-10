@@ -269,13 +269,13 @@
   <header>
     <h1>DIPE visualizer for reflection‑mode interferometric imaging (1D toy model)</h1>
     <p class="subtitle">
-      One axial pixel at <b>z = 0</b> is a <b>coherent sum</b> of many nearby scatterers weighted by the axial PSF.
+      The OCT signal measured at one axial pixel at <b>z = z₀</b> is a <b>coherent sum</b> of many nearby scatterers weighted by the axial point spread function (PSF).
       When the sample translates by Δz, each scatterer’s geometric phase shifts by <code>2k₀Δz</code>, <i>but</i> its PSF weight changes too —
-      and that reweighting shifts the phase of the coherent sum.
+      and that reweighting causes the phase of the coherent sum to deviate from the ideal shift <code>2k₀Δz</code>.
       <br /><br />
       The DIPE concept was proposed in the PRESIR paper for FD‑OCT, but the mechanism applies broadly to reflection‑mode interferometric imaging.
       <br /><br />
-      <b>Simulation conditions:</b> center wavelength <code>λ₀ = 0.85 µm</code> (so <code>k₀ = 2π/λ₀</code>), scatterers uniform in <code>z ∈ [−50, 50] µm</code>, and displacement sweep <code>Δz ∈ [−15, 15] µm</code>.
+      <b>Simulation conditions:</b> center wavelength <code>λ₀ = 0.85 µm</code> (so <code>k₀ = 2π/λ₀</code>), N<sub>s</sub> scatterers were assigned random axial coordinates uniformly distributed over <code>z ∈ [z₀−50, z₀+50] µm</code>, and the displacement was swept over <code>Δz ∈ [−15, 15] µm</code>.
     </p>
   </header>
 
@@ -309,14 +309,14 @@
       <div class="ctrl twoCol">
         <label>Phasor plot scaling</label>
         <div style="color:var(--muted); font-size:12px; line-height:1.25;">
-          E<sub>tar</sub> is normalized by max |E<sub>tar</sub>(Δz)| over ±15 µm
+          E<sub>tar</sub> is normalized to max<sub>Δz∈[−15, 15]</sub> |E<sub>tar</sub>(Δz)|
         </div>
       </div>
 
       <div class="checkboxRow">
         <label><input id="showPhasors" type="checkbox" checked /> Show individual scatterer phasors</label>
         <label><input id="showWeightBars" type="checkbox" checked /> Show PSF‑weighted amplitudes in depth view</label>
-        <label><input id="showIdealRef" type="checkbox" checked /> Show ideal rigid‑body reference in phasor view</label>
+        <label><input id="showIdealRef" type="checkbox" checked /> Show ideal phase shift in phasor view</label>
       </div>
 
       <div class="readouts">
@@ -335,18 +335,18 @@
             (<span id="phiErrDeg">0.0</span>°)
           </span>
         </div>
-        <div class="pill" id="magReadout">|E_tar|: 0.00 • |E_tar|/max: 0.00</div>
+        <div class="pill" id="magReadout">Normalized |E<sub>tar</sub>|: 0.00</div>
       </div>
     </div>
 
     <div class="grid">
       <div class="panel">
-        <h2>1) Scatterers moving through a fixed axial PSF (z in µm, pixel at 0)</h2>
+        <h2>1) Scatterers moving through a fixed axial PSF (z in µm, pixel at z<sub>0</sub>)</h2>
         <canvas id="depthCanvas"></canvas>
         <div class="legend">
           <div class="key"><span class="sw" style="background:var(--psf)"></span> PSF envelope</div>
           <div class="key"><span class="sw" style="background:#a78bfa"></span> Scatterers (shifted by Δz)</div>
-          <div class="key"><span class="sw" style="background:#34d399"></span> PSF‑weighted amplitude A·PSF(z) (display‑normalized)</div>
+          <div class="key"><span class="sw" style="background:#34d399"></span> PSF‑weighted amplitude A·PSF(z - z₀) (display‑normalized)</div>
         </div>
       </div>
 
@@ -355,14 +355,14 @@
         <canvas id="phasorCanvas"></canvas>
         <div class="legend">
           <!-- FIX #3: correct class so the swatch is orange -->
-          <div class="key"><span class="sw tar"></span> E<sub>tar</sub>(Δz) (normalized)</div>
-          <div class="key" id="idealLegend"><span class="sw uniform"></span> Ideal rigid‑body reference (no reweighting)</div>
-          <div class="key"><span class="sw" style="background:#8b95a7"></span> Individual phasors (subset for large N)</div>
+          <div class="key"><span class="sw tar"></span> Normalized E_tar(Δz)</div>
+          <div class="key" id="idealLegend"><span class="sw uniform"></span> Ideal phase shift</div>
+          <div class="key"><span class="sw" style="background:#8b95a7"></span> Individual phasors (subset for large N_s)</div>
         </div>
       </div>
 
       <div class="panel bottom">
-        <h2>3) Phase & amplitude vs displacement at this pixel</h2>
+        <h2>3) Phase & amplitude vs displacement of scatterers</h2>
 
         <!-- Δz slider moved here for easier multi-plot viewing -->
         <div class="dzRow">
@@ -380,10 +380,10 @@
         <canvas id="ampCanvas"></canvas>
 
         <div class="legend">
-          <div class="key"><span class="sw ideal"></span> Δφ<sub>ideal</sub>(Δz) = wrap(2k₀Δz)</div>
-          <div class="key"><span class="sw meas"></span> Δφ<sub>measured</sub>(Δz) = arg(E<sub>tar</sub>·E<sub>ref</sub><sup>*</sup>)</div>
-          <div class="key"><span class="sw err"></span> φ<sub>error</sub>(Δz) = wrap(Δφ<sub>measured</sub> − Δφ<sub>ideal</sub>)</div>
-          <div class="key"><span class="sw amp"></span> |E<sub>tar</sub>(Δz)| / max|E<sub>tar</sub>|</div>
+          <div class="key"><span class="sw ideal"></span> Δφ_ideal(Δz) = wrap(2k₀Δz)</div>
+          <div class="key"><span class="sw meas"></span> Δφ_measured(Δz) = arg{E_tar(Δz)·conj(E_tar(0))}</div>
+          <div class="key"><span class="sw err"></span> φ_error(Δz) = wrap(Δφ_measured − Δφ_ideal)</div>
+          <div class="key"><span class="sw amp"></span> Normalized |E_tar(Δz)|</div>
         </div>
       </div>
     </div>
@@ -391,7 +391,7 @@
     <div class="note">
       <b>What you’re seeing:</b> The complex interferometric signal at a pixel is a coherent superposition of scatterers weighted by the axial PSF.
       Bulk axial translation changes each scatterer’s geometric phase by <code>2k₀Δz</code>, but it also changes its PSF weight. That changes the
-      vector sum and adds a deterministic, pixel‑specific extra phase term (the “displacement‑induced phase error”) on top of the rigid‑body term.
+      vector sum and adds a deterministic, pixel‑specific extra phase term (the “displacement‑induced phase error”) on top of the ideal phase shift (2k₀Δz).
       <br /><br />
       <b>Try:</b> set <b>N<sub>s</sub> = 1</b> → φ<sub>error</sub> ≈ 0. Increase N<sub>s</sub> and make σ<sub>z</sub> narrower → larger phase errors.
       Click “New random scatterers” to see how the error curve depends on the speckle realization (but remains deterministic for that realization).
@@ -766,14 +766,21 @@
       ctx.font = "11px ui-sans-serif, system-ui";
       ctx.textAlign="center";
       ctx.textBaseline="top";
-      const ticks=[-50,-25,0,25,50];
+      const ticks = [-50, -25, 0, 25, 50];
+
+      const tickLabel = (t) => {
+        if (t === 0) return "z\u2080";                 // z₀
+        return t < 0 ? `z\u2080-${Math.abs(t)}`        // z₀-50
+                    : `z\u2080+${t}`;                 // z₀+25
+      };
+
       for (const t of ticks){
         const xx = xOfZ(t);
         ctx.strokeStyle="rgba(92,107,128,0.55)";
         ctx.beginPath();
         ctx.moveTo(xx,y0); ctx.lineTo(xx,y0+5);
         ctx.stroke();
-        ctx.fillText(String(t), xx, y0+7);
+        ctx.fillText(tickLabel(t), xx, y0 + 7);
       }
       ctx.textBaseline="bottom";
       ctx.fillText("z (µm)", (x0+x1)/2, h-6);
@@ -827,7 +834,7 @@
       ctx.font="12px ui-sans-serif, system-ui";
       ctx.textAlign="left";
       ctx.textBaseline="top";
-      ctx.fillText("PSF fixed at z = 0; scatterers shifted by Δz", x0, y1+2);
+      ctx.fillText("PSF fixed at z = z₀; scatterers shifted by Δz", x0, y1+2);
       ctx.restore();
     }
 
@@ -961,7 +968,7 @@
       ctx.textAlign="left";
       ctx.textBaseline="top";
       ctx.fillText(`Δφ_measured = ${dphi.toFixed(3)} rad`, pad, pad+4);
-      ctx.fillText(`|E_tar|/max = ${magN.toFixed(3)}`, pad, pad+20);
+      ctx.fillText(`Normalized |E_tar| = ${magN.toFixed(3)}`, pad, pad+20);
 
       // axis labels
       ctx.textAlign="right";
@@ -1041,7 +1048,7 @@
       ctx.rotate(-Math.PI/2);
       ctx.textAlign="center";
       ctx.textBaseline="alphabetic";
-      ctx.fillText("phase (rad, wrapped)", 0, 0);
+      ctx.fillText("Wrapped phase (rad)", 0, 0);
       ctx.restore();
       ctx.restore();
 
@@ -1154,7 +1161,7 @@
       ctx.rotate(-Math.PI/2);
       ctx.textAlign="center";
       ctx.textBaseline="alphabetic";
-      ctx.fillText("|E_tar| / max", 0, 0);
+      ctx.fillText("Normalized |E_tar|", 0, 0);
       ctx.restore();
       ctx.restore();
 
@@ -1241,7 +1248,7 @@
 
       const norm = out.amp / EtarMaxMag;
       document.getElementById("magReadout").textContent =
-        `|E_tar|: ${out.amp.toFixed(3)} • |E_tar|/max: ${norm.toFixed(3)}`;
+        `Normalized |E_tar|: ${norm.toFixed(3)}`;
     }
 
     function redrawAll(){
